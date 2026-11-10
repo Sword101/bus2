@@ -65,6 +65,9 @@ export default function DriverTripControlPage() {
       if (myBus.lastGpsUpdate) {
         setLastUpdateTime(myBus.lastGpsUpdate);
       }
+    } else {
+      setRoute(undefined);
+      setActiveTrip(undefined);
     }
   };
 
@@ -148,17 +151,17 @@ export default function DriverTripControlPage() {
         );
       },
       (err) => {
+        const fallbackLat = route?.stops?.[0]?.latitude || BHOPAL_CENTER.lat;
+        const fallbackLng = route?.stops?.[0]?.longitude || BHOPAL_CENTER.lng;
+        setCurrentCoords({ lat: fallbackLat, lng: fallbackLng });
+        setLastUpdateTime(new Date().toISOString());
+        db.updateLiveLocation(busId, driver.id, fallbackLat, fallbackLng, 30, 0);
+
         if (err.code === err.PERMISSION_DENIED) {
           setGpsState('DENIED');
-          setErrorMessage('Location permission denied. Please enable location permissions in browser settings to start the trip.');
+          setErrorMessage('Location permission denied. Please enable location permissions in browser settings for live GPS tracking. Fallback route coordinates activated.');
         } else {
-          // Fallback to route start stop coordinates or Bhopal center for testing / local demo
-          const fallbackLat = route?.stops?.[0]?.latitude || BHOPAL_CENTER.lat;
-          const fallbackLng = route?.stops?.[0]?.longitude || BHOPAL_CENTER.lng;
-          setCurrentCoords({ lat: fallbackLat, lng: fallbackLng });
           setGpsState('SIMULATED');
-          setLastUpdateTime(new Date().toISOString());
-          db.updateLiveLocation(busId, driver.id, fallbackLat, fallbackLng, 32, 0);
           setStatusFeedback('Physical GPS unavailable; activated route coordinates for demonstration.');
         }
       },
@@ -253,6 +256,21 @@ export default function DriverTripControlPage() {
   const isTripUnderway = bus.currentTripStatus === 'ON_TRIP';
   const isParked = bus.currentTripStatus === 'PARKED';
   const isIdle = bus.currentTripStatus === 'IDLE' || bus.currentTripStatus === 'OFFLINE';
+
+  const stops = route?.stops ? [...route.stops].sort((a, b) => a.sequenceOrder - b.sequenceOrder) : [];
+  let nextStop = stops[0];
+  if (isTripUnderway && stops.length > 0) {
+    if (activeTrip?.currentStopId) {
+      const idx = stops.findIndex((s) => s.id === activeTrip.currentStopId);
+      if (idx !== -1) {
+        nextStop = stops[idx];
+      } else if (stops.length > 1) {
+        nextStop = stops[1];
+      }
+    } else if (stops.length > 1) {
+      nextStop = stops[1];
+    }
+  }
 
   return (
     <RoleGuard allowedRoles={['driver']}>
@@ -458,10 +476,10 @@ export default function DriverTripControlPage() {
                 <span>Next Stop</span>
               </div>
               <div className="text-sm font-bold text-slate-900 mt-1 truncate">
-                {route?.stops?.[1]?.name || route?.stops?.[0]?.name || 'Terminal'}
+                {nextStop?.name || 'Terminal'}
               </div>
               <div className="text-[10px] text-slate-500 mt-0.5">
-                {route?.stops?.[1]?.scheduledArrival || 'On Schedule'}
+                {nextStop?.scheduledArrival || 'On Schedule'}
               </div>
             </div>
           </div>

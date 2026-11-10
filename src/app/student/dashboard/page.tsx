@@ -42,16 +42,16 @@ export default function StudentDashboardPage() {
     const selection = db.getStudentSelection(student.id);
     if (selection) {
       const b = db.getBusById(selection.busId);
-      setSelectedBus(b);
-
-      if (b?.assignedRouteId) {
-        setRoute(db.getRouteById(b.assignedRouteId));
-      }
-      if (b?.assignedDriverId) {
-        setDriver(db.getDriverById(b.assignedDriverId));
-      }
       if (b) {
+        setSelectedBus(b);
+        setRoute(b.assignedRouteId ? db.getRouteById(b.assignedRouteId) : undefined);
+        setDriver(b.assignedDriverId ? db.getDriverById(b.assignedDriverId) : undefined);
         setActiveTrip(db.getActiveTripForBus(b.id));
+      } else {
+        setSelectedBus(undefined);
+        setRoute(undefined);
+        setDriver(undefined);
+        setActiveTrip(undefined);
       }
     } else {
       setSelectedBus(undefined);
@@ -73,6 +73,21 @@ export default function StudentDashboardPage() {
   const isOnTrip = selectedBus?.currentTripStatus === 'ON_TRIP';
   const isParked = selectedBus?.currentTripStatus === 'PARKED';
   const isIdle = !selectedBus || selectedBus.currentTripStatus === 'IDLE' || selectedBus.currentTripStatus === 'OFFLINE';
+
+  const stops = route?.stops ? [...route.stops].sort((a, b) => a.sequenceOrder - b.sequenceOrder) : [];
+  let nextStop = stops[0];
+  if (isOnTrip && stops.length > 0) {
+    if (activeTrip?.currentStopId) {
+      const idx = stops.findIndex((s) => s.id === activeTrip.currentStopId);
+      if (idx !== -1) {
+        nextStop = stops[idx];
+      } else if (stops.length > 1) {
+        nextStop = stops[1];
+      }
+    } else if (stops.length > 1) {
+      nextStop = stops[1];
+    }
+  }
 
   const externalMapLink = selectedBus?.currentLatitude && selectedBus?.currentLongitude
     ? `https://www.google.com/maps/dir/?api=1&destination=${selectedBus.currentLatitude},${selectedBus.currentLongitude}`
@@ -180,10 +195,10 @@ export default function StudentDashboardPage() {
                 <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
                   <div className="text-slate-400 font-bold uppercase text-[10px]">Next Scheduled Stop</div>
                   <div className="text-sm font-bold text-slate-900 mt-1 truncate">
-                    {route?.stops?.[1]?.name || route?.stops?.[0]?.name || 'University Gate'}
+                    {nextStop ? nextStop.name : 'University Gate'}
                   </div>
                   <div className="text-[10px] text-blue-600 font-semibold">
-                    Scheduled: {route?.stops?.[1]?.scheduledArrival || 'On Schedule'}
+                    Scheduled: {nextStop ? nextStop.scheduledArrival : 'On Schedule'}
                   </div>
                 </div>
 

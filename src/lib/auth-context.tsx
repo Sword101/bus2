@@ -9,7 +9,7 @@ interface AuthContextType {
   user: UserProfile | null;
   role: UserRole | null;
   isLoading: boolean;
-  login: (identifier: string, pass: string) => Promise<{ success: boolean; error?: string }>;
+  login: (identifier: string, pass: string) => Promise<{ success: boolean; role?: UserRole; user?: UserProfile; error?: string }>;
   registerStudent: (data: {
     fullName: string;
     enrollmentNumber: string;
@@ -45,14 +45,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const login = async (identifier: string, pass: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (identifier: string, pass: string): Promise<{ success: boolean; role?: UserRole; user?: UserProfile; error?: string }> => {
     setIsLoading(true);
     try {
       const res = db.authenticateUser(identifier, pass);
       if (res.user) {
         setUser(res.user);
         localStorage.setItem('bustrack_current_user', JSON.stringify(res.user));
-        return { success: true };
+        return { success: true, role: res.user.role, user: res.user };
       }
       return { success: false, error: res.error || 'Authentication failed' };
     } finally {

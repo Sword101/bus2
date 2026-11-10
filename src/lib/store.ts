@@ -528,6 +528,8 @@ class BusTrackStore {
           // If previous session used old non-Bhopal coordinates (lat > 25), migrate to Bhopal data
           const isOldNonBhopal = parsed.buses?.[0]?.currentLatitude && parsed.buses[0].currentLatitude > 25;
           if (!isOldNonBhopal) {
+            if (parsed.profiles) this.profiles = parsed.profiles;
+            if (parsed.admins) this.admins = parsed.admins;
             if (parsed.buses) this.buses = parsed.buses;
             if (parsed.routes) this.routes = parsed.routes;
             if (parsed.drivers) this.drivers = parsed.drivers;
@@ -555,6 +557,8 @@ class BusTrackStore {
         localStorage.setItem(
           'bustrack_db_v1',
           JSON.stringify({
+            profiles: this.profiles,
+            admins: this.admins,
             buses: this.buses,
             routes: this.routes,
             drivers: this.drivers,
@@ -620,6 +624,62 @@ class BusTrackStore {
     }
 
     return { user: null, error: 'Account not found with this identifier' };
+  }
+
+  public getAdmins(): AdminUser[] {
+    return Object.values(this.admins);
+  }
+
+  public createAdmin(
+    data: {
+      adminId: string;
+      fullName: string;
+      email?: string;
+      phone?: string;
+      department?: string;
+      password?: string;
+    },
+    creatorAdminId: string
+  ): { admin: AdminUser | null; error?: string } {
+    const cleanId = data.adminId.trim().toUpperCase();
+    if (!cleanId || !data.fullName.trim()) {
+      return { admin: null, error: 'Admin ID and full name are required' };
+    }
+
+    const exists = Object.values(this.admins).some((a) => a.adminId.toUpperCase() === cleanId);
+    if (exists) {
+      return { admin: null, error: `Admin ID "${cleanId}" already exists` };
+    }
+
+    const newId = 'a_' + Date.now();
+    const newProfile: UserProfile = {
+      id: newId,
+      role: 'admin',
+      fullName: data.fullName.trim(),
+      email: data.email?.trim() || `${cleanId.toLowerCase()}@bustrack.local`,
+      phone: data.phone?.trim() || '',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+    };
+
+    const newAdmin: AdminUser = {
+      ...newProfile,
+      role: 'admin',
+      adminId: cleanId,
+      department: data.department?.trim() || 'Transit Operations Authority',
+    };
+
+    this.profiles.push(newProfile);
+    this.admins[newId] = newAdmin;
+    this.passwords[cleanId] = data.password || 'Admin@123';
+
+    this.logAudit(creatorAdminId, 'CREATE_ADMIN', 'ADMIN', cleanId, {
+      fullName: data.fullName,
+      department: newAdmin.department,
+    });
+
+    this.persist();
+    return { admin: newAdmin };
   }
 
   public registerStudent(data: {
@@ -727,6 +787,22 @@ class BusTrackStore {
     const oldBus = this.buses[idx];
     this.buses[idx] = { ...oldBus, ...updates };
 
+    // If driver was unassigned
+    if (updates.assignedDriverId === null && oldBus.assignedDriverId) {
+      this.assignments.forEach((a) => {
+        if (a.busId === id && a.isActive) {
+          a.isActive = false;
+          a.unassignedAt = new Date().toISOString();
+        }
+      });
+      this.notifyBusFollowers(
+        id,
+        'Driver Unassigned',
+        `Bus ${oldBus.busNumber} currently does not have an assigned driver.`,
+        'DRIVER_CHANGE'
+      );
+    }
+
     // If route changed, notify affected students & driver
     if (updates.assignedRouteId && updates.assignedRouteId !== oldBus.assignedRouteId) {
       const newRoute = this.getRouteById(updates.assignedRouteId);
@@ -734,6 +810,13 @@ class BusTrackStore {
         id,
         'Route Updated',
         `Bus ${oldBus.busNumber} has been reassigned to route ${newRoute?.name || updates.assignedRouteId}.`,
+        'ROUTE_CHANGE'
+      );
+    } else if (updates.assignedRouteId === null && oldBus.assignedRouteId) {
+      this.notifyBusFollowers(
+        id,
+        'Route Unassigned',
+        `Bus ${oldBus.busNumber} has been temporarily unassigned from its route corridor.`,
         'ROUTE_CHANGE'
       );
     }
@@ -753,10 +836,15 @@ class BusTrackStore {
   }
 
   public createRoute(data: Omit<BusRoute, 'id'>, adminId: string): BusRoute {
+    const routeId = 'r_' + Date.now();
+    const stopsWithRouteId = (data.stops || []).map((s) => ({
+      ...s,
+      routeId,
+    }));
     const newRoute: BusRoute = {
       ...data,
-      id: 'r_' + Date.now(),
-      stops: data.stops || [],
+      id: routeId,
+      stops: stopsWithRouteId,
     };
     this.routes.push(newRoute);
     this.logAudit(adminId, 'CREATE_ROUTE', 'ROUTE', newRoute.id, { routeNumber: newRoute.routeNumber });
@@ -881,6 +969,42 @@ class BusTrackStore {
       driverName: driver.fullName,
     });
 
+    this.persist();
+    return true;
+  }
+
+  public unassignDriverFromBus(busId: string, adminId: string): boolean {
+    const bus = this.buses.find((b) => b.id === busId);
+    if (!bus) return false;
+
+    const oldDriverId = bus.assignedDriverId;
+    bus.assignedDriverId = null;
+
+    this.assignments.forEach((a) => {
+      if (a.busId === busId && a.isActive) {
+        a.isActive = false;
+        a.unassignedAt = new Date().toISOString();
+      }
+    });
+
+    if (oldDriverId) {
+      this.createNotification(
+        oldDriverId,
+        'Vehicle Duty Unassigned',
+        `You have been unassigned from Bus ${bus.busNumber}.`,
+        'DRIVER_CHANGE',
+        busId
+      );
+    }
+
+    this.notifyBusFollowers(
+      busId,
+      'Driver Unassigned',
+      `Bus ${bus.busNumber} currently does not have an assigned driver.`,
+      'DRIVER_CHANGE'
+    );
+
+    this.logAudit(adminId, 'UNASSIGN_DRIVER', 'BUS', busId, { busNumber: bus.busNumber });
     this.persist();
     return true;
   }
@@ -1302,7 +1426,7 @@ class BusTrackStore {
   public logAudit(actorId: string, action: string, entityType: string, entityId: string, metadata?: Record<string, any>) {
     const actor = this.profiles.find((p) => p.id === actorId);
     const log: AuditLog = {
-      id: String(this.auditLogs.length + 1),
+      id: String(Date.now() + '_' + Math.random().toString(36).substring(2, 6)),
       actorId,
       actorName: actor?.fullName || actorId,
       action,
@@ -1312,6 +1436,7 @@ class BusTrackStore {
       createdAt: new Date().toISOString(),
     };
     this.auditLogs.unshift(log);
+    this.persist();
   }
 
   // --- Demo GPS Simulator ---
@@ -1325,23 +1450,29 @@ class BusTrackStore {
 
     if (this.demoSimulatorActive) {
       if (!this.demoInterval) {
-        let step = 0;
+        let currentLegIndex = 0;
+        let legStep = 0;
+        const STEPS_PER_LEG = 6;
+
         this.demoInterval = setInterval(() => {
           const bus = this.buses.find((b) => b.id === 'b1');
           const route = this.routes.find((r) => r.id === 'r1');
-          if (bus && route?.stops && route.stops.length > 0) {
-            const stopIndex = step % route.stops.length;
-            const currentStop = route.stops[stopIndex];
-            const nextStop = route.stops[(stopIndex + 1) % route.stops.length];
+          if (bus && route?.stops && route.stops.length > 1) {
+            const stops = [...route.stops].sort((a, b) => a.sequenceOrder - b.sequenceOrder);
+            const totalStops = stops.length;
 
-            // Interpolate between current and next stop
-            const fraction = ((step * 0.2) % 1);
-            const lat = currentStop.latitude + (nextStop.latitude - currentStop.latitude) * fraction;
-            const lng = currentStop.longitude + (nextStop.longitude - currentStop.longitude) * fraction;
+            const fromStop = stops[currentLegIndex];
+            const nextIndex = (currentLegIndex + 1) % totalStops;
+            const toStop = stops[nextIndex];
+
+            // fraction from 0 to 1 along the current leg
+            const fraction = legStep / STEPS_PER_LEG;
+            const lat = fromStop.latitude + (toStop.latitude - fromStop.latitude) * fraction;
+            const lng = fromStop.longitude + (toStop.longitude - fromStop.longitude) * fraction;
 
             bus.currentLatitude = Number(lat.toFixed(6));
             bus.currentLongitude = Number(lng.toFixed(6));
-            bus.speed = 36 + Math.sin(step) * 10;
+            bus.speed = Math.round(30 + Math.sin(legStep) * 8);
             bus.lastGpsUpdate = new Date().toISOString();
             bus.currentTripStatus = 'ON_TRIP';
 
@@ -1350,11 +1481,17 @@ class BusTrackStore {
               activeTrip.lastLatitude = bus.currentLatitude;
               activeTrip.lastLongitude = bus.currentLongitude;
               activeTrip.lastUpdatedAt = bus.lastGpsUpdate;
-              activeTrip.currentStopId = currentStop.id;
+              // If halfway through the leg or beyond, upcoming stop is next
+              activeTrip.currentStopId = fraction >= 0.5 ? toStop.id : fromStop.id;
             }
 
             this.persist();
-            step++;
+
+            legStep++;
+            if (legStep >= STEPS_PER_LEG) {
+              legStep = 0;
+              currentLegIndex = (currentLegIndex + 1) % totalStops;
+            }
           }
         }, 3000);
       }
@@ -1365,6 +1502,7 @@ class BusTrackStore {
       }
     }
 
+    this.notify();
     return this.demoSimulatorActive;
   }
 

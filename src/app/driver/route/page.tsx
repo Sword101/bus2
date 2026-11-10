@@ -38,7 +38,12 @@ export default function DriverRoutePage() {
       setRoute(r);
       if (r?.stops) {
         setStops([...r.stops].sort((a, b) => a.sequenceOrder - b.sequenceOrder));
+      } else {
+        setStops([]);
       }
+    } else {
+      setRoute(undefined);
+      setStops([]);
     }
   };
 

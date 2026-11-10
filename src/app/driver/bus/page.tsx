@@ -116,7 +116,7 @@ export default function DriverBusPage() {
                 <div className="text-slate-400 font-bold uppercase text-[10px]">Assigned Route</div>
                 <div className="text-sm font-bold text-slate-900">{route ? route.name : 'Unassigned'}</div>
                 <div className="text-slate-600 font-medium">
-                  {route ? `${route.startPoint} &rarr; ${route.endPoint}` : 'N/A'}
+                  {route ? `${route.startPoint} → ${route.endPoint}` : 'N/A'}
                 </div>
               </div>
 

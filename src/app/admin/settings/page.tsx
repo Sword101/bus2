@@ -1,15 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RoleGuard } from '@/components/RoleGuard';
 import DashboardLayout from '@/components/DashboardLayout';
 import { db } from '@/lib/store';
 import { useAuth } from '@/lib/auth-context';
+import { AdminUser } from '@/types';
 import { ShieldCheck, Plus, CheckCircle2, AlertCircle, User, Lock, KeyRound } from 'lucide-react';
 
 export default function AdminSettingsPage() {
   const { user } = useAuth();
 
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [adminId, setAdminId] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -18,6 +20,16 @@ export default function AdminSettingsPage() {
 
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const loadAdmins = () => {
+    setAdmins(db.getAdmins());
+  };
+
+  useEffect(() => {
+    loadAdmins();
+    const unsub = db.subscribe(loadAdmins);
+    return () => unsub();
+  }, []);
 
   const handleCreateAdmin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,17 +42,26 @@ export default function AdminSettingsPage() {
       return;
     }
 
-    // Register in mock store
-    db.logAudit(user?.id || 'admin', 'CREATE_ADMIN', 'ADMIN', cleanId, {
-      fullName,
-      department,
-      createdBy: user?.fullName,
-    });
+    const res = db.createAdmin(
+      {
+        adminId: cleanId,
+        fullName: fullName.trim(),
+        email: email.trim() || undefined,
+        department: department.trim() || undefined,
+        password: password || 'Admin@123',
+      },
+      user?.id || 'admin'
+    );
 
-    setStatusMsg(`Administrator account ${cleanId} (${fullName}) created successfully.`);
-    setAdminId('');
-    setFullName('');
-    setEmail('');
+    if (res.admin) {
+      setStatusMsg(`Administrator account ${cleanId} (${fullName}) created successfully.`);
+      setAdminId('');
+      setFullName('');
+      setEmail('');
+      setPassword('Admin@123');
+    } else {
+      setErrorMsg(res.error || 'Failed to create administrator account.');
+    }
   };
 
   return (
@@ -81,20 +102,32 @@ export default function AdminSettingsPage() {
 
           {/* Active Administrators Card */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
-            <h2 className="text-sm font-bold text-slate-900">Active Authorized Administrators</h2>
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white font-bold flex items-center justify-center">
-                  A
+            <h2 className="text-sm font-bold text-slate-900">Active Authorized Administrators ({admins.length})</h2>
+            <div className="space-y-3">
+              {admins.map((a) => (
+                <div key={a.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-blue-600 text-white font-bold flex items-center justify-center">
+                      {a.fullName.charAt(0) || 'A'}
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-900">{a.fullName}</div>
+                      <div className="text-[11px] text-slate-500 font-mono">
+                        {a.adminId} • {a.email || 'N/A'} • {a.department}
+                      </div>
+                    </div>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      a.adminId === 'ADMIN001'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-emerald-100 text-emerald-800'
+                    }`}
+                  >
+                    {a.adminId === 'ADMIN001' ? 'SUPER ADMIN' : 'OPERATIONS ADMIN'}
+                  </span>
                 </div>
-                <div>
-                  <div className="font-bold text-slate-900">System Administrator</div>
-                  <div className="text-[11px] text-slate-500 font-mono">ADMIN001 • admin@bustrack.local</div>
-                </div>
-              </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">
-                SUPER ADMIN
-              </span>
+              ))}
             </div>
           </div>
 

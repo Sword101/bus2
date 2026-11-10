@@ -15,6 +15,8 @@ export function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
   const { user, role, isLoading } = useAuth();
   const router = useRouter();
 
+  const allowedRolesKey = allowedRoles.join(',');
+
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
@@ -26,7 +28,7 @@ export function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
         else if (user.role === 'student') router.push('/student/dashboard');
       }
     }
-  }, [user, role, isLoading, allowedRoles, router]);
+  }, [user, role, isLoading, allowedRolesKey, router]);
 
   if (isLoading || !user || !allowedRoles.includes(user.role)) {
     return (

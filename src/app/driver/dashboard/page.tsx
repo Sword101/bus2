@@ -42,6 +42,9 @@ export default function DriverDashboardPage() {
     if (myBus?.assignedRouteId) {
       setRoute(db.getRouteById(myBus.assignedRouteId));
       setActiveTrip(db.getActiveTripForBus(myBus.id));
+    } else {
+      setRoute(undefined);
+      setActiveTrip(undefined);
     }
   };
 

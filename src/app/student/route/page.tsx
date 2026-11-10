@@ -5,7 +5,7 @@ import { RoleGuard } from '@/components/RoleGuard';
 import DashboardLayout from '@/components/DashboardLayout';
 import { db } from '@/lib/store';
 import { useAuth } from '@/lib/auth-context';
-import { StudentUser, Bus, BusRoute, RouteStop } from '@/types';
+import { StudentUser, Bus, BusRoute, RouteStop, Trip } from '@/types';
 import { Clock, MapPin, Bus as BusIcon, AlertCircle, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
@@ -16,6 +16,7 @@ export default function StudentRoutePage() {
   const [bus, setBus] = useState<Bus | undefined>(undefined);
   const [route, setRoute] = useState<BusRoute | undefined>(undefined);
   const [stops, setStops] = useState<RouteStop[]>([]);
+  const [activeTrip, setActiveTrip] = useState<Trip | undefined>(undefined);
 
   const loadData = () => {
     if (!student) return;
@@ -28,8 +29,23 @@ export default function StudentRoutePage() {
         setRoute(r);
         if (r?.stops) {
           setStops([...r.stops].sort((a, b) => a.sequenceOrder - b.sequenceOrder));
+        } else {
+          setStops([]);
         }
+      } else {
+        setRoute(undefined);
+        setStops([]);
       }
+      if (b) {
+        setActiveTrip(db.getActiveTripForBus(b.id));
+      } else {
+        setActiveTrip(undefined);
+      }
+    } else {
+      setBus(undefined);
+      setRoute(undefined);
+      setStops([]);
+      setActiveTrip(undefined);
     }
   };
 
@@ -61,6 +77,17 @@ export default function StudentRoutePage() {
     );
   }
 
+  const isOnTrip = bus.currentTripStatus === 'ON_TRIP';
+  let nextStopIndex = -1;
+  if (isOnTrip && stops.length > 0) {
+    if (activeTrip?.currentStopId) {
+      const idx = stops.findIndex((s) => s.id === activeTrip.currentStopId);
+      nextStopIndex = idx !== -1 ? idx : (stops.length > 1 ? 1 : 0);
+    } else {
+      nextStopIndex = stops.length > 1 ? 1 : 0;
+    }
+  }
+
   return (
     <RoleGuard allowedRoles={['student']}>
       <DashboardLayout role="student">
@@ -82,7 +109,7 @@ export default function StudentRoutePage() {
                   <h2 className="text-lg font-black text-slate-900">{route.name}</h2>
                 </div>
                 <div className="text-xs text-slate-500 mt-0.5">
-                  {route.startPoint} &rarr; {route.endPoint} • ~{route.estimatedDurationMins} minutes ({route.distanceKm} km)
+                  {route.startPoint} → {route.endPoint} • ~{route.estimatedDurationMins} minutes ({route.distanceKm} km)
                 </div>
               </div>
               <div className="text-xs font-bold text-slate-700 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 self-start sm:self-auto">
@@ -95,8 +122,8 @@ export default function StudentRoutePage() {
               {stops.map((stop, index) => {
                 const isStart = index === 0;
                 const isTerminal = index === stops.length - 1;
-                const isNext = index === 1 && bus.currentTripStatus === 'ON_TRIP';
-                const isPassed = index === 0 && bus.currentTripStatus === 'ON_TRIP';
+                const isNext = isOnTrip && index === nextStopIndex;
+                const isPassed = isOnTrip && nextStopIndex !== -1 && index < nextStopIndex;
 
                 return (
                   <div key={stop.id} className="relative flex items-start gap-4 text-xs">

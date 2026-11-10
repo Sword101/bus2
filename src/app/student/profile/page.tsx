@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RoleGuard } from '@/components/RoleGuard';
 import DashboardLayout from '@/components/DashboardLayout';
 import { db } from '@/lib/store';
 import { useAuth } from '@/lib/auth-context';
-import { StudentUser } from '@/types';
+import { StudentUser, Bus } from '@/types';
 import { GraduationCap, Lock, KeyRound, CheckCircle2, AlertCircle, Bus as BusIcon } from 'lucide-react';
 
 export default function StudentProfilePage() {
@@ -18,9 +18,23 @@ export default function StudentProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [selectedBus, setSelectedBus] = useState<Bus | undefined>(undefined);
 
-  const selection = student ? db.getStudentSelection(student.id) : null;
-  const selectedBus = selection ? db.getBusById(selection.busId) : null;
+  const loadData = () => {
+    if (!student) return;
+    const selection = db.getStudentSelection(student.id);
+    if (selection) {
+      setSelectedBus(db.getBusById(selection.busId));
+    } else {
+      setSelectedBus(undefined);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+    const unsub = db.subscribe(loadData);
+    return () => unsub();
+  }, [student?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -44,11 +44,23 @@ export default function StudentLiveMapPage() {
         setRoute(r);
         if (r?.stops) {
           setStops([...r.stops].sort((a, b) => a.sequenceOrder - b.sequenceOrder));
+        } else {
+          setStops([]);
         }
+      } else {
+        setRoute(undefined);
+        setStops([]);
       }
       if (b) {
         setActiveTrip(db.getActiveTripForBus(b.id));
+      } else {
+        setActiveTrip(undefined);
       }
+    } else {
+      setBus(undefined);
+      setRoute(undefined);
+      setStops([]);
+      setActiveTrip(undefined);
     }
   };
 
@@ -87,6 +99,25 @@ export default function StudentLiveMapPage() {
   const externalMapLink = bus.currentLatitude && bus.currentLongitude
     ? `https://www.google.com/maps/dir/?api=1&destination=${bus.currentLatitude},${bus.currentLongitude}`
     : null;
+
+  const isOnTrip = bus.currentTripStatus === 'ON_TRIP';
+  let nextStopIndex = -1;
+  let nextStop = stops[0];
+  if (isOnTrip && stops.length > 0) {
+    if (activeTrip?.currentStopId) {
+      const idx = stops.findIndex((s) => s.id === activeTrip.currentStopId);
+      if (idx !== -1) {
+        nextStopIndex = idx;
+        nextStop = stops[idx];
+      } else if (stops.length > 1) {
+        nextStopIndex = 1;
+        nextStop = stops[1];
+      }
+    } else if (stops.length > 1) {
+      nextStopIndex = 1;
+      nextStop = stops[1];
+    }
+  }
 
   return (
     <RoleGuard allowedRoles={['student']}>
@@ -185,10 +216,10 @@ export default function StudentLiveMapPage() {
             <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
               <div className="text-slate-400 font-bold uppercase text-[10px]">Upcoming Stop</div>
               <div className="text-sm font-bold text-slate-900 mt-1 truncate">
-                {route?.stops?.[1]?.name || route?.stops?.[0]?.name || 'Terminal'}
+                {nextStop?.name || 'Terminal'}
               </div>
               <div className="text-[10px] text-blue-600 font-semibold mt-0.5">
-                Arrival: {route?.stops?.[1]?.scheduledArrival || 'On Time'}
+                Arrival: {nextStop?.scheduledArrival || 'On Time'}
               </div>
             </div>
 
@@ -245,8 +276,8 @@ export default function StudentLiveMapPage() {
 
               <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-blue-200">
                 {stops.map((stop, index) => {
-                  const isCompleted = index === 0 && bus.currentTripStatus === 'ON_TRIP';
-                  const isNext = index === 1 && bus.currentTripStatus === 'ON_TRIP';
+                  const isCompleted = isOnTrip && nextStopIndex !== -1 && index < nextStopIndex;
+                  const isNext = isOnTrip && index === nextStopIndex;
 
                   return (
                     <div key={stop.id} className="relative flex items-start gap-4 text-xs">

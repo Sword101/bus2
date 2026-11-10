@@ -10,12 +10,16 @@ export default function DemoControlBanner() {
   const [isSimulating, setIsSimulating] = useState(false);
 
   useEffect(() => {
-    setIsSimulating(db.isDemoSimulatorActive());
+    const updateSimState = () => {
+      setIsSimulating(db.isDemoSimulatorActive());
+    };
+    updateSimState();
+    const unsub = db.subscribe(updateSimState);
+    return () => unsub();
   }, []);
 
   const handleToggleSimulator = () => {
-    const nextState = db.toggleDemoSimulator();
-    setIsSimulating(nextState);
+    db.toggleDemoSimulator();
   };
 
   return (

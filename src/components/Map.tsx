@@ -30,11 +30,26 @@ export default function Map({
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const polylineRef = useRef<any>(null);
+  const onSelectStopRef = useRef(onSelectStop);
+  onSelectStopRef.current = onSelectStop;
 
-  // Compute map center prioritizing live GPS, stops, and defaulting to Bhopal, MP
-  const defaultLat = bus?.currentLatitude || (stops.length > 0 ? stops[0].latitude : BHOPAL_CENTER.lat);
-  const defaultLng = bus?.currentLongitude || (stops.length > 0 ? stops[0].longitude : BHOPAL_CENTER.lng);
-  const mapCenter: [number, number] = center || [defaultLat, defaultLng];
+  // Compute map center prioritizing center prop, live GPS, stops, and Bhopal default
+  const targetLat = center
+    ? center[0]
+    : bus?.currentLatitude || (stops.length > 0 ? stops[0].latitude : BHOPAL_CENTER.lat);
+  const targetLng = center
+    ? center[1]
+    : bus?.currentLongitude || (stops.length > 0 ? stops[0].longitude : BHOPAL_CENTER.lng);
+
+  // Clean unmount on destroy
+  useEffect(() => {
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -54,10 +69,15 @@ export default function Map({
       });
 
       if (!mapInstanceRef.current) {
+        // Double check container hasn't already been initialized
+        if ((mapContainerRef.current as any)._leaflet_id) {
+          (mapContainerRef.current as any)._leaflet_id = undefined;
+        }
+
         const map = L.map(mapContainerRef.current, {
           zoomControl: true,
           attributionControl: true,
-        }).setView(mapCenter, zoom);
+        }).setView([targetLat, targetLng], zoom);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
@@ -65,9 +85,18 @@ export default function Map({
         }).addTo(map);
 
         mapInstanceRef.current = map;
+      } else {
+        // If bus is on an active trip, smoothly follow bus coordinates
+        if (bus?.currentLatitude && bus?.currentLongitude) {
+          mapInstanceRef.current.panTo([bus.currentLatitude, bus.currentLongitude], {
+            animate: true,
+            duration: 0.8,
+          });
+        }
       }
 
       const map = mapInstanceRef.current;
+      if (!map) return;
 
       // Clear existing markers & polylines
       markersRef.current.forEach((m) => m.remove());
@@ -134,7 +163,7 @@ export default function Map({
           `);
 
           marker.on('click', () => {
-            if (onSelectStop) onSelectStop(stop);
+            if (onSelectStopRef.current) onSelectStopRef.current(stop);
           });
 
           markersRef.current.push(marker);
@@ -149,7 +178,6 @@ export default function Map({
 
         const isParked = b.currentTripStatus === 'PARKED';
         const isOnTrip = b.currentTripStatus === 'ON_TRIP';
-        const isOffline = b.currentTripStatus === 'OFFLINE' || b.currentTripStatus === 'IDLE';
 
         const colorBg = isParked ? '#f59e0b' : isOnTrip ? '#10b981' : '#64748b';
 
@@ -236,7 +264,7 @@ export default function Map({
     return () => {
       isMounted = false;
     };
-  }, [bus, stops, allBuses, selectedStopId, mapCenter, zoom, onSelectStop]);
+  }, [bus?.id, bus?.currentLatitude, bus?.currentLongitude, bus?.currentTripStatus, stops, allBuses, selectedStopId, targetLat, targetLng, zoom]);
 
   const externalMapLink = bus?.currentLatitude && bus?.currentLongitude
     ? `https://www.google.com/maps/dir/?api=1&destination=${bus.currentLatitude},${bus.currentLongitude}`

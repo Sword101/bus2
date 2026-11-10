@@ -7,7 +7,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { db } from '@/lib/store';
 import { BusRoute } from '@/types';
 import { useAuth } from '@/lib/auth-context';
-import { BHOPAL_CENTER } from '@/lib/geo-config';
+import { BHOPAL_CENTER, BHOPAL_LANDMARKS } from '@/lib/geo-config';
 import {
   Route as RouteIcon,
   Plus,
@@ -61,6 +61,20 @@ export default function AdminRoutesPage() {
     }
 
     try {
+      const startLm = BHOPAL_LANDMARKS.find((lm) =>
+        startPoint.trim().toLowerCase().includes(lm.name.toLowerCase()) ||
+        lm.name.toLowerCase().includes(startPoint.trim().toLowerCase())
+      );
+      const endLm = BHOPAL_LANDMARKS.find((lm) =>
+        endPoint.trim().toLowerCase().includes(lm.name.toLowerCase()) ||
+        lm.name.toLowerCase().includes(endPoint.trim().toLowerCase())
+      );
+
+      const startLat = startLm ? startLm.latitude : BHOPAL_CENTER.lat;
+      const startLng = startLm ? startLm.longitude : BHOPAL_CENTER.lng;
+      const endLat = endLm ? endLm.latitude : 23.2163;
+      const endLng = endLm ? endLm.longitude : 77.4067;
+
       const created = db.createRoute(
         {
           routeNumber: cleanNum,
@@ -75,9 +89,9 @@ export default function AdminRoutesPage() {
               id: 'rs_' + Date.now() + '_1',
               routeId: '',
               name: startPoint.trim(),
-              address: `${startPoint.trim()} Transit Bay, Bhopal`,
-              latitude: 23.2694,
-              longitude: 77.4126,
+              address: startLm?.address || `${startPoint.trim()} Transit Bay, Bhopal`,
+              latitude: startLat,
+              longitude: startLng,
               sequenceOrder: 1,
               scheduledArrival: '07:30 AM',
               scheduledDeparture: '07:35 AM',
@@ -87,9 +101,9 @@ export default function AdminRoutesPage() {
               id: 'rs_' + Date.now() + '_2',
               routeId: '',
               name: endPoint.trim(),
-              address: `${endPoint.trim()} Terminal, Bhopal`,
-              latitude: 23.2163,
-              longitude: 77.4067,
+              address: endLm?.address || `${endPoint.trim()} Terminal, Bhopal`,
+              latitude: endLat,
+              longitude: endLng,
               sequenceOrder: 2,
               scheduledArrival: '08:20 AM',
               scheduledDeparture: '08:25 AM',

@@ -39,11 +39,10 @@ export default function LoginPage() {
     try {
       const res = await login(identifier, password);
       if (res.success) {
-        // Redirect based on identifier pattern or role
-        const upper = identifier.trim().toUpperCase();
-        if (upper.startsWith('ADMIN')) {
+        // Redirect directly based on verified user role
+        if (res.role === 'admin') {
           router.push('/admin/dashboard');
-        } else if (upper.startsWith('DRIVER')) {
+        } else if (res.role === 'driver') {
           router.push('/driver/dashboard');
         } else {
           router.push('/student/dashboard');

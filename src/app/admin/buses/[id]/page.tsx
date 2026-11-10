@@ -55,10 +55,16 @@ export default function AdminBusDetailPage({ params }: { params: Promise<{ id: s
       if (b.assignedRouteId) {
         setRoute(db.getRouteById(b.assignedRouteId));
         setSelectedRouteId(b.assignedRouteId);
+      } else {
+        setRoute(undefined);
+        setSelectedRouteId('');
       }
       if (b.assignedDriverId) {
         setDriver(db.getDriverById(b.assignedDriverId));
         setSelectedDriverId(b.assignedDriverId);
+      } else {
+        setDriver(undefined);
+        setSelectedDriverId('');
       }
       setActiveTrip(db.getActiveTripForBus(busId));
       setTripHistory(db.getTripsForBus(busId));
@@ -83,7 +89,7 @@ export default function AdminBusDetailPage({ params }: { params: Promise<{ id: s
       if (selectedDriverId) {
         db.assignDriverToBus(selectedDriverId, bus.id, user?.id || 'admin');
       } else {
-        db.updateBus(bus.id, { assignedDriverId: null }, user?.id || 'admin');
+        db.unassignDriverFromBus(bus.id, user?.id || 'admin');
       }
     }
 
