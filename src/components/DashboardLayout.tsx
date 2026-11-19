@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { UserRole } from '@/types';
-import DemoControlBanner from './DemoControlBanner';
 import NotificationBell from './NotificationBell';
 import {
   LayoutDashboard,
@@ -76,9 +75,6 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      {/* Top Demo Quick Switcher Banner */}
-      <DemoControlBanner />
-
       <div className="flex-1 flex overflow-hidden">
         {/* Desktop Sidebar */}
         <aside className="hidden md:flex md:w-64 flex-col bg-slate-900 border-r border-slate-800 text-slate-300">

@@ -78,6 +78,23 @@
   - Route RT-102: *Rani Kamlapati Railway Station to AIIMS Bhopal Campus Shuttle* via Shahpura Lake and Saket Nagar.
   - Buses MP-04-AB-1001, MP-04-CD-1002, MP-04-EF-1003 situated on genuine Bhopal coordinates.
 - **Route Management & Location Picker (`src/app/admin/routes/[id]/page.tsx`):** Added a quick-select Bhopal landmark dropdown populating real latitude/longitude waypoints.
+
+### Production Readiness & Demo Cleanup (COMPLETED)
+- **Demo Banner & Controls Removed:** Fully excised `DemoControlBanner` and top banner bars from `page.tsx`, `login/page.tsx`, `register/page.tsx`, `about/page.tsx`, `contact/page.tsx`, and `DashboardLayout.tsx`.
+- **Clean Login Experience (`/login`):**
+  - Removed "Auto-Fill Demo Credentials" buttons.
+  - Added clean identifier/password authentication form for Students, Drivers, and Administrators.
+  - Added clear institutional guidance notice: Driver and Fleet Admin accounts are provisioned directly by Campus Transit Operations.
+  - Added prominent "Create Student Account / Register" CTA button.
+- **Enhanced Student Self-Registration (`/register`):**
+  - Accessible via top navigation bar, landing page hero, and login page.
+  - Enforces institutional student enrollment validation (uppercase normalized), department, year of study, contact details, and password.
+- **Landing Page Upgrade (`/`):**
+  - Removed demo auto-login card clicks.
+  - Added prominent "Create Student Account" and "Sign In to Portal" action buttons.
+  - Converted role cards into clean portal entry gateways.
+  - Added "Sign Up" links in top navbar and footer.
+- **Verification:** Ran `npm run build` — 100% clean production build, 31 routes generated with 0 errors.
 - **Local Search Enhancement (`src/app/student/search/page.tsx`):** Integrated Bhopal landmark quick suggestions (MP Nagar, New Market, Bhopal Junction, Rani Kamlapati, MANIT, AIIMS, Lalghati, Shahpura Lake).
 - **Driver GPS Prioritization (`src/app/driver/trip/page.tsx`):** Preserved live `watchPosition` GPS coordinates with Bhopal as initial map center and fallback.
 - **Build Verified:** `npm run build` passes with 0 errors and all 31 routes intact.

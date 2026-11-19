@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import DemoControlBanner from '@/components/DemoControlBanner';
 import {
   Bus,
   Lock,
@@ -81,8 +80,6 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      <DemoControlBanner />
-
       <header className="bg-white border-b border-slate-200 py-4 px-6 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm">

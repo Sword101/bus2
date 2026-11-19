@@ -162,7 +162,7 @@ export default function DriverTripControlPage() {
           setErrorMessage('Location permission denied. Please enable location permissions in browser settings for live GPS tracking. Fallback route coordinates activated.');
         } else {
           setGpsState('SIMULATED');
-          setStatusFeedback('Physical GPS unavailable; activated route coordinates for demonstration.');
+          setStatusFeedback('Physical GPS unavailable; relying on designated route coordinates fallback.');
         }
       },
       { enableHighAccuracy: true, timeout: 10000 }

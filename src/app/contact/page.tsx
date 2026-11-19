@@ -2,14 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
-import DemoControlBanner from '@/components/DemoControlBanner';
 import { Bus, Phone, Mail, MapPin, Clock, ArrowRight } from 'lucide-react';
 
 export default function ContactPage() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      <DemoControlBanner />
-
       <header className="bg-white border-b border-slate-200 py-4 px-6 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm">
@@ -17,9 +14,17 @@ export default function ContactPage() {
           </div>
           <span className="font-black text-slate-900 text-lg">BusTrack</span>
         </Link>
-        <Link href="/" className="text-xs font-semibold text-slate-600 hover:text-blue-600">
-          Back to Home &rarr;
-        </Link>
+        <div className="flex items-center gap-4 text-xs font-semibold">
+          <Link href="/login" className="text-slate-600 hover:text-blue-600">
+            Sign In
+          </Link>
+          <Link href="/register" className="text-blue-600 hover:text-blue-700 font-bold">
+            Sign Up
+          </Link>
+          <Link href="/" className="text-slate-600 hover:text-blue-600">
+            Home &rarr;
+          </Link>
+        </div>
       </header>
 
       <main className="flex-1 max-w-4xl mx-auto px-4 py-12">

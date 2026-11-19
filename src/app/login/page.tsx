@@ -4,17 +4,15 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import DemoControlBanner from '@/components/DemoControlBanner';
 import {
   Bus,
   Lock,
   User,
-  ShieldCheck,
-  Truck,
-  GraduationCap,
   ArrowRight,
   AlertCircle,
   Loader2,
+  UserPlus,
+  Info,
 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -48,7 +46,7 @@ export default function LoginPage() {
           router.push('/student/dashboard');
         }
       } else {
-        setError(res.error || 'Authentication failed. Please verify credentials.');
+        setError(res.error || 'Authentication failed. Please verify your credentials.');
       }
     } catch (err: any) {
       setError(err?.message || 'Unexpected login error.');
@@ -57,16 +55,8 @@ export default function LoginPage() {
     }
   };
 
-  const handleFillDemo = (id: string, pass: string) => {
-    setIdentifier(id);
-    setPassword(pass);
-    setError(null);
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      <DemoControlBanner />
-
       <header className="bg-white border-b border-slate-200 py-4 px-6 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm">
@@ -74,9 +64,14 @@ export default function LoginPage() {
           </div>
           <span className="font-black text-slate-900 text-lg">BusTrack</span>
         </Link>
-        <Link href="/" className="text-xs font-semibold text-slate-600 hover:text-blue-600">
-          Back to Home &rarr;
-        </Link>
+        <div className="flex items-center gap-4 text-xs font-semibold">
+          <Link href="/register" className="text-blue-600 hover:text-blue-700">
+            Sign Up
+          </Link>
+          <Link href="/" className="text-slate-600 hover:text-blue-600">
+            Home &rarr;
+          </Link>
+        </div>
       </header>
 
       <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
@@ -84,41 +79,8 @@ export default function LoginPage() {
           <div className="text-center mb-6">
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Sign In</h1>
             <p className="text-xs text-slate-500 mt-1">
-              Enter your designated Transit ID or Student Enrollment Number
+              Access your institutional transit portal with your official ID
             </p>
-          </div>
-
-          {/* 1-Click Demo Credential Auto-fillers */}
-          <div className="mb-6 p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2 text-center">
-              Auto-Fill Demo Credentials
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => handleFillDemo('ADMIN001', 'Admin@123')}
-                className="py-1.5 px-2 rounded-lg bg-white border border-slate-200 hover:border-blue-400 hover:bg-blue-50 text-[11px] font-semibold text-slate-700 flex flex-col items-center gap-0.5 transition"
-              >
-                <ShieldCheck className="w-4 h-4 text-blue-600" />
-                <span>Admin</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('DRIVER001', 'Driver@123')}
-                className="py-1.5 px-2 rounded-lg bg-white border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 text-[11px] font-semibold text-slate-700 flex flex-col items-center gap-0.5 transition"
-              >
-                <Truck className="w-4 h-4 text-emerald-600" />
-                <span>Driver</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('STU2026001', 'Student@123')}
-                className="py-1.5 px-2 rounded-lg bg-white border border-slate-200 hover:border-purple-400 hover:bg-purple-50 text-[11px] font-semibold text-slate-700 flex flex-col items-center gap-0.5 transition"
-              >
-                <GraduationCap className="w-4 h-4 text-purple-600" />
-                <span>Student</span>
-              </button>
-            </div>
           </div>
 
           {error && (
@@ -143,11 +105,12 @@ export default function LoginPage() {
                   onChange={(e) => setIdentifier(e.target.value)}
                   placeholder="e.g. STU2026001, DRIVER001, ADMIN001"
                   required
+                  autoFocus
                   className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent font-medium"
                 />
               </div>
               <p className="mt-1 text-[11px] text-slate-400">
-                Enrollment number for students, Driver ID for drivers, Admin ID for admins.
+                Enrollment number for students, Driver ID for drivers, Admin ID for administrators.
               </p>
             </div>
 
@@ -189,11 +152,26 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 pt-5 border-t border-slate-100 text-center text-xs text-slate-500">
-            <span>New student? </span>
-            <Link href="/register" className="font-bold text-blue-600 hover:text-blue-700">
-              Create an account
+          {/* Student Sign Up Action */}
+          <div className="mt-6 pt-5 border-t border-slate-100">
+            <div className="text-center">
+              <span className="text-xs text-slate-500">Don&apos;t have a student account?</span>
+            </div>
+            <Link
+              href="/register"
+              className="mt-2.5 w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-blue-600 font-bold text-xs transition flex items-center justify-center gap-1.5"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Create Student Account / Register</span>
             </Link>
+          </div>
+
+          {/* Driver & Admin Access Notice */}
+          <div className="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-start gap-2.5 text-[11px] text-slate-500">
+            <Info className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+            <p>
+              Driver and Fleet Administration accounts are managed and provisioned directly by Campus Transit Operations. Contact your supervisor for access.
+            </p>
           </div>
         </div>
       </div>

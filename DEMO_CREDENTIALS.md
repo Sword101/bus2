@@ -1,6 +1,6 @@
 # BusTrack - Development & Demo Credentials
 
-These credentials are for development and demonstration environments only. The login UI includes a 1-click credential switcher to autofill these roles.
+These seed accounts are initialized in the database for immediate testing and initial system administration. Demo auto-fill buttons have been removed from the user interface for production; enter these credentials directly into the `/login` portal.
 
 ## 1. System Administrator
 - **Identifier (Admin ID):** `ADMIN001`
